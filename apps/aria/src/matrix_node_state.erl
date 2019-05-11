@@ -21,14 +21,16 @@
 %% @doc
 %% according to X, Y, Z get a key for save data
 %% @end
--spec get_state(X :: tuple()) -> binary().
+-spec get_state(tuple()) -> binary().
 get_state({Z, Y, X}) ->
     <<Z:16/integer, Y:16/integer, X:16/integer>>.
 
 %% @doc
 %% according to Key get x, y, z
 %% @end
--spec get_zyx(Key::binary()) -> tuple().
+-spec get_zyx(binary()) -> tuple().
+get_zyx(<<Z:16/integer, Y:16/integer, X:16/integer>>) ->
+    {Z, Y, X};
 get_zyx(Key) ->
-    <<Z:16/integer, Y:16/integer, X:16/integer>> = Key,
-    {Z, Y, X}.
+    utils_log:debug("[~p, ~p] get_zyx Key : ~p", [?MODULE, ?LINE, Key]),
+    {0, 0, 0}.

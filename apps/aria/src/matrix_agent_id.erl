@@ -20,7 +20,8 @@
 ]).
 
 get_id({Y, X}) ->
-  PidNameBin = matrix_node_id:get_id({0, Y, X}),
+  PidNameBin = <<0:16/integer, Y:16/integer, X:16/integer>>,
+%%  PidNameBin = matrix_node_id:get_id({0, Y, X}),
   erlang:binary_to_atom(PidNameBin, latin1).
 
 get_zyx(Id) ->

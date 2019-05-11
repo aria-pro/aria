@@ -13,4 +13,24 @@
 -author("mike").
 
 %% API
--export([]).
+-export([
+  active_rules/3,
+  update_node_state/1
+]).
+
+active_rules(NodeState, Input, Timestamp) ->
+  Now = utils_tool:epoch_micro_ts(),
+  active_rule(NodeState, Input, Timestamp, Now).
+
+active_rule(_NodeState, _Input, Timestamp, Now) when (Timestamp + 60000) =< Now ->
+  'reset';
+active_rule(NodeState, Input, _Timestamp, _Now) when (NodeState + Input) >= 5 ->
+  'active';
+active_rule(_NodeState, _Input, _Timestamp, _Now) ->
+  'add'.
+
+update_node_state(NodeState) ->
+  NodeState + 1.
+
+
+

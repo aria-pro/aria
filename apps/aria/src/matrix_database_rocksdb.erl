@@ -16,19 +16,19 @@
 
 %% API
 -export([
-    start_link/0,
-    put/2, put/3,
-    get/1, get/2
+  start_link/0,
+  put/2, put/3,
+  get/1, get/2
 ]).
 
 %% gen_server callbacks
 -export([
-    init/1,
-    handle_call/3,
-    handle_cast/2,
-    handle_info/2,
-    terminate/2,
-    code_change/3
+  init/1,
+  handle_call/3,
+  handle_cast/2,
+  handle_info/2,
+  terminate/2,
+  code_change/3
 ]).
 
 -define(SERVER, ?MODULE).
@@ -46,20 +46,31 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(start_link() ->
-    {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
+  {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 put(Key, Value) ->
-    put(Key, Value, [{sync, true}]).
+  put(Key, Value, [
+    {sync, false},
+    {disable_wal, true},
+%%    {timeout_hint_us, non_neg_integer()},
+    {ignore_missing_column_families, true}
+  ]).
 
 put(Key, Value, Opts) ->
-    gen_server:call(?SERVER, {put, Key, Value, Opts}).
+  gen_server:call(?SERVER, {put, Key, Value, Opts}).
 
 get(Key) ->
-    get(Key, []).
+  get(Key, [
+    {verify_checksums, false},
+    {fill_cache, true},
+    {iterate_upper_bound, false},
+    {tailing, true},
+    {total_order_seek, false}
+  ]).
 get(Key, Opts) ->
-    gen_server:call(?SERVER, {get, Key, Opts}).
+  gen_server:call(?SERVER, {get, Key, Opts}).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -76,14 +87,14 @@ get(Key, Opts) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(init(Args :: term()) ->
-    {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
-    {stop, Reason :: term()} | ignore).
+  {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term()} | ignore).
 init([]) ->
-    Name = "./matrix_rocksdb",
-    DBOpts = [{create_if_missing, true}],
-    CFOpts = [{compression, snappy}],
-    {ok, Ref} = erocksdb:open(Name, DBOpts, CFOpts),
-    {ok, #state{ref = Ref}}.
+  Name = "./matrix_rocksdb",
+  DBOpts = [{create_if_missing, true}],
+  CFOpts = [{compression, snappy}],
+  {ok, Ref} = erocksdb:open(Name, DBOpts, CFOpts),
+  {ok, #state{ref = Ref}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -94,20 +105,20 @@ init([]) ->
 %%--------------------------------------------------------------------
 -spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
     State :: #state{}) ->
-    {reply, Reply :: term(), NewState :: #state{}} |
-    {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
-    {noreply, NewState :: #state{}} |
-    {noreply, NewState :: #state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
-    {stop, Reason :: term(), NewState :: #state{}}).
+  {reply, Reply :: term(), NewState :: #state{}} |
+  {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
+  {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({put, Key, Value, Opts}, _From, #state{ref = Ref} = State) ->
-    Reply = do_put(erocksdb:put(Ref, Key, Value, Opts)),
-    {reply, Reply, State};
+  Reply = do_put(erocksdb:put(Ref, Key, Value, Opts)),
+  {reply, Reply, State};
 handle_call({get, Key, Opts}, _From, #state{ref = Ref} = State) ->
-    Reply = do_get(erocksdb:get(Ref, Key, Opts)),
-    {reply, Reply, State};
+  Reply = do_get(erocksdb:get(Ref, Key, Opts)),
+  {reply, Reply, State};
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+  {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,11 +128,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle_cast(Request :: term(), State :: #state{}) ->
-    {noreply, NewState :: #state{}} |
-    {noreply, NewState :: #state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), NewState :: #state{}}).
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast(_Request, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,11 +145,11 @@ handle_cast(_Request, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle_info(Info :: timeout() | term(), State :: #state{}) ->
-    {noreply, NewState :: #state{}} |
-    {noreply, NewState :: #state{}, timeout() | hibernate} |
-    {stop, Reason :: term(), NewState :: #state{}}).
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), NewState :: #state{}}).
 handle_info(_Info, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,8 +165,8 @@ handle_info(_Info, State) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
 terminate(_Reason, #state{ref = Ref} = _State) ->
-    erocksdb:close(Ref),
-    ok.
+  erocksdb:close(Ref),
+  ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -167,20 +178,20 @@ terminate(_Reason, #state{ref = Ref} = _State) ->
 %%--------------------------------------------------------------------
 -spec(code_change(OldVsn :: term() | {down, term()}, State :: #state{},
     Extra :: term()) ->
-    {ok, NewState :: #state{}} | {error, Reason :: term()}).
+  {ok, NewState :: #state{}} | {error, Reason :: term()}).
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+  {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 do_put(ok) ->
-    ok;
+  ok;
 do_put({error, _Ref, Reason}) ->
-    {error, Reason}.
+  {error, Reason}.
 
 do_get({ok, Value}) ->
-    {ok, Value};
+  {ok, Value};
 do_get(Result) ->
-    {error, Result}.
+  {error, Result}.
 

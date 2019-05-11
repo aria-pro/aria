@@ -14,23 +14,9 @@
 
 %% API
 -export([
-  test/0,
-  split_10x10/1
+  split_10x10/1,
+  test/0
 ]).
-
-test() ->
-%%  List = generate_matrix(100, 100, []),
-  List = lists:seq(1, 10000),
-%%  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List]),
-  List1 = split_10x10(List),
-  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List1]),
-  send(List1).
-
-send([]) ->
-  ok;
-send([{Y, X, List100} | List]) ->
-  erlang:send_after(10, matrix_agent_id:get_id({Y * 10, X * 10}), {data, List100}),
-  send(List).
 
 %% sort like
 %% 7,8,9,
@@ -44,7 +30,7 @@ split_10x10(List) ->
     Index = I div 100,
     Y = Index div 10,
     X = Index rem 10,
-    utils_log:debug("[~p, ~p] split_10x10 index Y X: ~p", [?MODULE, ?LINE, {Index, Y, X}]),
+%%    utils_log:debug("[~p, ~p] split_10x10 index Y X: ~p", [?MODULE, ?LINE, {Index, Y, X}]),
     {Y, X, List100}
         end,
   lists:map(Fun, lists:seq(1, 10000, 100)).
@@ -60,3 +46,19 @@ split_10x10(List) ->
 %%  Result;
 %%generate_matrix_(X, Result) ->
 %%  generate_matrix_(X - 1, [rand:uniform(100) | Result]).
+
+
+
+test() ->
+%%  List = generate_matrix(100, 100, []),
+  List = lists:seq(1, 10000),
+%%  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List]),
+  List1 = split_10x10(List),
+%%  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List1]),
+  send(List1).
+
+send([]) ->
+  ok;
+send([{Y, X, List100} | List]) ->
+  erlang:send_after(10, matrix_agent_id:get_id({Y * 10, X * 10}), {data, List100}),
+  send(List).

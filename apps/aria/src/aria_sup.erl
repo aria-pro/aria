@@ -48,7 +48,7 @@ child(Id) ->
   {Id, {Id, start_link, []}, permanent, 5000, worker, [Id]}.
 
 agents() ->
-  agents(matrix_agent_id:get_ids([{0, 99}, {0, 99}]), []).
+  agents(matrix_agent_id:get_ids([{0, 999}, {0, 999}]), []).
 
 agents([], Result) ->
   Result;

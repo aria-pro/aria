@@ -16,7 +16,8 @@
 
 %% API
 -export([
-  start_link/0, start_link/1
+  start_link/0, start_link/1,
+  send/2
 ]).
 
 %% gen_server callbacks
@@ -29,7 +30,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {zyx}).
+-record(state, {location}).
 
 %%%===================================================================
 %%% API
@@ -49,10 +50,16 @@ start_link() ->
 -spec(start_link([{X :: integer(), Y :: integer()}]) ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link(AgentId) ->
-%%  utils_log:debug("[~p, ~p] start_link AgentId: ~p", [?MODULE, ?LINE, AgentId]),
   ZYX = matrix_agent_id:get_zyx(AgentId),
   utils_log:debug("[~p, ~p] start_link {Z, Y, X}: ~p", [?MODULE, ?LINE, ZYX]),
   gen_server:start_link({local, AgentId}, ?MODULE, [ZYX], []).
+
+send([], _) ->
+  ok;
+send([Pid | PidList], Msg) ->
+  utils_log:debug("[~p, ~p] send Pid {Z, Y, X}: ~p", [?MODULE, ?LINE, matrix_agent_id:get_zyx(Pid)]),
+  erlang:send_after(10, Pid, Msg),
+  send(PidList, Msg).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -72,8 +79,8 @@ start_link(AgentId) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([ZYX]) ->
-  {ok, #state{zyx = ZYX}}.
+init([Location]) ->
+  {ok, #state{location = Location}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,12 +128,13 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
-handle_info({init, {MinZ, MaxZ}}, #state{zyx = {Z, Y, X}} = State) ->
-  utils_log:debug("[~p, ~p] handle_info {MinZ, MaxZ}: ~p, {Z, Y, X}: ~p", [?MODULE, ?LINE, {MinZ, MaxZ}, {Z, Y, X}]),
-  utils_tool:init_z([{MinZ, MaxZ}, {Y, Y + 9}, {X, X + 9}]),
+handle_info({init, {MinZ, MaxZ}}, #state{location = {Z, Y, X}} = State) ->
+%%  utils_log:debug("[~p, ~p] handle_info Location: ~p, {MinZ, MaxZ}: ~p", [?MODULE, ?LINE, {Z, Y, X}, {MinZ, MaxZ}]),
+  matrix_node:init_z([{MinZ, MaxZ}, {Y, Y + 9}, {X, X + 9}]),
   {noreply, State};
-handle_info({data, List}, #state{zyx = {Z, Y, X}} = State) ->
-  utils_log:debug("[~p, ~p] handle_info List: ~p, {Z, Y, X}: ~p", [?MODULE, ?LINE, List, {Z, Y, X}]),
+handle_info({data, List}, #state{location = Location} = State) ->
+%%  utils_log:debug("[~p, ~p] handle_info location: ~p, List: ~p", [?MODULE, ?LINE, Location, List]),
+  update_10x10(Location, List),
   {noreply, State};
 handle_info(Info, State) ->
   utils_log:debug("[~p, ~p] handle_info Info: ~p", [?MODULE, ?LINE, Info]),
@@ -165,3 +173,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%% update matrix
+%% 7, 8, 9       y2x0, y2x1, y2x2
+%% 4, 5, 6   ->  y1x0, y1x1, y1x2
+%% 1, 2, 3       y0x0, y0x1, y0x2
+update_10x10({_Z, Y, X}, List) ->
+  loop(Y, X, List).
+
+loop(Y, X, List) ->
+  loop_y(Y, X, List, 0, 0).
+
+%% update y
+loop_y(_Y, _X, _List, 10, _IndexX) ->
+  ok;
+loop_y(Y, X, List, IndexY, IndexX) ->
+  loop_x(Y, X, List, IndexY, IndexX),
+  loop_y(Y, X, List, IndexY + 1, IndexX).
+
+%% update x
+loop_x(_Y, _X, _List, _IndexY, 10) ->
+  ok;
+loop_x(Y, X, List, IndexY, IndexX) when IndexY * 10 + IndexX < length(List) ->
+  Value = lists:nth(IndexY * 10 + IndexX + 1, List),
+%%  utils_log:debug("[~p, ~p] matrix_agent update_10x10 location: ~p, Value: ~p", [?MODULE, ?LINE, {0, Y + IndexY, X + IndexX}, Value rem 100]),
+  Location = {0, Y + IndexY, X + IndexX},
+  matrix_node:set_node_state(Location, Value),
+  if
+    Value >= 30 ->
+      matrix_node:handle_next(Location);
+    Value < 30 ->
+      ok
+  end,
+  loop_x(Y, X, List, IndexY, IndexX + 1).
