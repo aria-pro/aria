@@ -15,6 +15,8 @@
 %% API
 -export([
   split_10x10/1,
+  split_100x1/1,
+  split_1x100/1,
   test/0
 ]).
 
@@ -24,6 +26,30 @@
 %% 1,2,3,
 
 split_10x10(List) ->
+  Fun = fun(I) ->
+    List100 = lists:sublist(List, I, 100),
+%%    utils_log:debug("[~p, ~p] split_10x10 X: ~p, List100: ~p", [?MODULE, ?LINE, I, List100]),
+    Index = I div 100,
+    Y = Index div 10,
+    X = Index rem 10,
+%%    utils_log:debug("[~p, ~p] split_10x10 index Y X: ~p", [?MODULE, ?LINE, {Index, Y, X}]),
+    {Y, X, List100}
+        end,
+  lists:map(Fun, lists:seq(1, 10000, 100)).
+
+split_100x1(List) ->
+  Fun = fun(I) ->
+    List100 = lists:sublist(List, I, 100),
+%%    utils_log:debug("[~p, ~p] split_10x10 X: ~p, List100: ~p", [?MODULE, ?LINE, I, List100]),
+    Index = I div 100,
+    Y = Index div 10,
+    X = Index rem 10,
+%%    utils_log:debug("[~p, ~p] split_10x10 index Y X: ~p", [?MODULE, ?LINE, {Index, Y, X}]),
+    {Y, X, List100}
+        end,
+  lists:map(Fun, lists:seq(1, 10000, 100)).
+
+split_1x100(List) ->
   Fun = fun(I) ->
     List100 = lists:sublist(List, I, 100),
 %%    utils_log:debug("[~p, ~p] split_10x10 X: ~p, List100: ~p", [?MODULE, ?LINE, I, List100]),
@@ -49,13 +75,13 @@ split_10x10(List) ->
 
 
 
+
+
 test() ->
-%%  List = generate_matrix(100, 100, []),
-  List = lists:seq(1, 10000),
-%%  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List]),
-  List1 = split_10x10(List),
+  List_1_10000 = lists:seq(1, 10000),
+  List_Y_X_List100 = split_10x10(List_1_10000),
 %%  utils_log:debug("[~p, ~p] test List: ~p", [?MODULE, ?LINE, List1]),
-  send(List1).
+  send(List_Y_X_List100).
 
 send([]) ->
   ok;

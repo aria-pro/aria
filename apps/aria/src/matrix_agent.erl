@@ -51,13 +51,11 @@ start_link() ->
   {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link(AgentId) ->
   ZYX = matrix_agent_id:get_zyx(AgentId),
-  utils_log:debug("[~p, ~p] start_link {Z, Y, X}: ~p", [?MODULE, ?LINE, ZYX]),
   gen_server:start_link({local, AgentId}, ?MODULE, [ZYX], []).
 
 send([], _) ->
   ok;
 send([Pid | PidList], Msg) ->
-  utils_log:debug("[~p, ~p] send Pid {Z, Y, X}: ~p", [?MODULE, ?LINE, matrix_agent_id:get_zyx(Pid)]),
   erlang:send_after(10, Pid, Msg),
   send(PidList, Msg).
 
@@ -129,11 +127,9 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 handle_info({init, {MinZ, MaxZ}}, #state{location = {Z, Y, X}} = State) ->
-%%  utils_log:debug("[~p, ~p] handle_info Location: ~p, {MinZ, MaxZ}: ~p", [?MODULE, ?LINE, {Z, Y, X}, {MinZ, MaxZ}]),
   matrix_node:init_z([{MinZ, MaxZ}, {Y, Y + 9}, {X, X + 9}]),
   {noreply, State};
 handle_info({data, List}, #state{location = Location} = State) ->
-%%  utils_log:debug("[~p, ~p] handle_info location: ~p, List: ~p", [?MODULE, ?LINE, Location, List]),
   update_10x10(Location, List),
   {noreply, State};
 handle_info(Info, State) ->
@@ -195,13 +191,12 @@ loop_x(_Y, _X, _List, _IndexY, 10) ->
   ok;
 loop_x(Y, X, List, IndexY, IndexX) when IndexY * 10 + IndexX < length(List) ->
   Value = lists:nth(IndexY * 10 + IndexX + 1, List),
-%%  utils_log:debug("[~p, ~p] matrix_agent update_10x10 location: ~p, Value: ~p", [?MODULE, ?LINE, {0, Y + IndexY, X + IndexX}, Value rem 100]),
   Location = {0, Y + IndexY, X + IndexX},
   matrix_node:set_node_state(Location, Value),
   if
-    Value >= 30 ->
+    (Value rem 100) >= 80 ->
       matrix_node:handle_next(Location);
-    Value < 30 ->
+    true ->
       ok
   end,
   loop_x(Y, X, List, IndexY, IndexX + 1).

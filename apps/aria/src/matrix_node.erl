@@ -76,7 +76,7 @@ get_node_info({_Z, _Y, _X} = Location) ->
 %% Get node state
 %% @end
 %%--------------------------------------------------------------------
--spec get_node_timestamp(tuple()) -> binary().
+-spec get_node_timestamp(tuple()) -> integer().
 get_node_timestamp({_Z, _Y, _X} = Location) ->
   MatrixNodeProp = get_node_info(Location),
   proplists:get_value(<<"timestamp">>, MatrixNodeProp).
@@ -86,7 +86,7 @@ get_node_timestamp({_Z, _Y, _X} = Location) ->
 %% Get node state
 %% @end
 %%--------------------------------------------------------------------
--spec get_node_state(tuple()) -> binary().
+-spec get_node_state(tuple()) -> integer().
 get_node_state({_Z, _Y, _X} = Location) ->
   MatrixNodeProp = get_node_info(Location),
   proplists:get_value(<<"node_state">>, MatrixNodeProp).
